@@ -1,62 +1,48 @@
 import subprocess
-import os
 import tkinter as tk
 from tkinter import messagebox
 
+#Class to show the starting GUI for the program
+class Starting_Interface():
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("3D Tumour Planner")
+        self.root.geometry("300x150")
 
+        # Label for radius input
+        self.radius_label = tk.Label(self.root, text="Enter dimensions 1:")
+        self.radius_label.pack(pady=5)
 
+        # Entry field for radius
+        self.radius_entry = tk.Entry(self.root)
+        self.radius_entry.pack(pady=5)
 
+        # Buttons to open 3D slicer program or close GUI
+        self.create_button = tk.Button(self.root, text="Open 3D Slicer", command=lambda :self.on_button_click())
+        self.create_button.pack(pady=10)
+        self.close_button = tk.Button(self.root, text="Close", command=lambda : self.root.destroy())
+        self.close_button.pack(pady=10)
 
-def Start_Slicer(slicer_executable, radius):
-    if os.path.exists(slicer_executable):
+        # Run the GUI
+        self.root.mainloop()
+
+    def on_button_click(self):
+        """Gets the user input, validates it, and starts Slicer."""
         try:
-            # Launch 3D Slicer
-            #subprocess.Popen([slicer_executable])
-            print("3D Slicer is starting...")
-            sphere_script_path = r"create_sphere.py"
-            subprocess.run([
-                slicer_executable,
-                "--no-splash",
-                "--python-script", sphere_script_path,
-                str(radius)  # Pass radius as a string argument
-            ])
-        except Exception as e:
-            print(f"Error while launching 3D Slicer: {e}")
-    else:
-        print(f"Slicer executable not found at {slicer_executable}")
-
-
-def on_button_click():
-    """Gets the user input, validates it, and starts Slicer."""
-    try:
-        radius = float(radius_entry.get())
-        if radius <= 0:
-            messagebox.showerror("Invalid Input", "Radius must be a positive number.")
+            radius = float(self.radius_entry.get())
+            if radius <= 0:
+                messagebox.showerror("Invalid Input", "Radius must be a positive number.")
+                return
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Please enter a valid number.")
             return
-    except ValueError:
-        messagebox.showerror("Invalid Input", "Please enter a valid number.")
-        return
 
-    slicer_executable = r"C:\Program Files\slicer.org\Slicer 5.8.0\Slicer.exe"
+        subprocess.run(["python", "Slicer_Script.py", str(radius)])
+        self.root.destroy() # Closes GUI
 
-    Start_Slicer(slicer_executable, radius)
-
+def main():
+     Starting_Interface()
 
 
-root = tk.Tk()
-root.title("3D Tumour Planner")
-root.geometry("300x150")
-
-# Label for radius input
-radius_label = tk.Label(root, text="Enter dimensions 1:")
-radius_label.pack(pady=5)
-
-# Entry field for radius
-radius_entry = tk.Entry(root)
-radius_entry.pack(pady=5)
-
-create_button = tk.Button(root, text="Open 3D Slicer", command=on_button_click)
-create_button.pack(pady=10)
-
-# Run the GUI
-root.mainloop()
+if __name__ == "__main__":
+    main()
