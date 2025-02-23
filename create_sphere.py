@@ -55,14 +55,17 @@ def open_unity_project(project_path):
     # Update this path to the location of your Unity Editor executable.
     unity_executable = r"C:\Program Files\Unity\Hub\Editor\2022.3.15f1\Editor\Unity.exe"
 
-    # Construct the command to open the Unity project
-    cmd = f'"{unity_executable}" -projectPath "{project_path}"'
-    print(f"Launching Unity project at {project_path}...")
+    execute_method = "ImportObj.ImportObjFile"
+
+    # Construct the command to open the Unity project and execute the import script
+    cmd = f'"{unity_executable}" -projectPath "{project_path}" -executeMethod {execute_method}'
+    print(f"Launching Unity project at {project_path} with method {execute_method}...")
 
     try:
         subprocess.Popen(cmd, shell=True)
     except Exception as e:
         print(f"Failed to launch Unity project: {e}")
+
 
 
 # Check if a radius value is provided
