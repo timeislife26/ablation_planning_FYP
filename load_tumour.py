@@ -87,14 +87,17 @@ def save_and_continue():
         print("Failed to save project.")
 
     print("Opening Unity...")
-    open_unity_project(os.path.join(script_dir, "Unity", "FYP_Testing"))
+    open_unity_project(os.path.join(script_dir, "Unity", "FYP_Testing"), save_path)
 
-def open_unity_project(project_path):
+
+def open_unity_project(project_path, save_path):
     unity_executable = r"C:\Program Files\Unity\Hub\Editor\2022.3.15f1\Editor\Unity.exe"
     execute_method = "ImportObj.ImportObjFile"
 
-    cmd = f'"{unity_executable}" -projectPath "{project_path}" -executeMethod {execute_method}'
-    print(f"Launching Unity project at {project_path} with method {execute_method}...")
+    # Add --filePath as an argument
+    cmd = f'"{unity_executable}" -projectPath "{project_path}" -executeMethod {execute_method} --filePath "{save_path}"'
+
+    print(f"Launching Unity project at {project_path} with method {execute_method} and file {save_path}...")
 
     try:
         subprocess.Popen(cmd, shell=True)
