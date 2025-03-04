@@ -1,21 +1,24 @@
 import subprocess
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 
 
 class TumorPlanner:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("3D Tumour Planner")
-        self.root.geometry("400x400")
+        self.root.geometry("600x400")
 
         self.tumor_entries = []
         self.create_input_fields()
 
-        self.add_button = tk.Button(self.root, text="Add Another Tumour", command=self.create_input_fields)
+        self.add_button = tk.Button(self.root, text="Add More Dimensions", command=self.create_input_fields)
         self.add_button.pack(pady=5)
 
-        self.create_button = tk.Button(self.root, text="Open 3D Slicer", command=self.on_button_click)
+        self.create_button = tk.Button(self.root, text="Create Tumour", command=self.on_create_tumour_click)
+        self.create_button.pack(pady=10)
+
+        self.create_button = tk.Button(self.root, text="Load Tumour", command=self.on_load_tumour_click)
         self.create_button.pack(pady=10)
 
         self.close_button = tk.Button(self.root, text="Close", command=self.root.destroy)
@@ -54,7 +57,7 @@ class TumorPlanner:
 
         self.tumor_entries.append((entry_x, entry_y, entry_z, entry_px, entry_py, entry_pz))
 
-    def on_button_click(self):
+    def on_create_tumour_click(self):
         """Get user inputs, validate them, and start Slicer."""
         tumor_data = []
         for entries in self.tumor_entries:
@@ -76,8 +79,17 @@ class TumorPlanner:
                 return
 
         # Pass tumors as a single string argument
-        subprocess.run(["python", "Slicer_Script.py", "|".join(tumor_data)])
+        subprocess.run(["python", "Slicer_Script.py", "create", "|".join(tumor_data)])
         self.root.destroy()
+
+    def on_load_tumour_click(self):
+        """Loads the tumour from an obj file into 3D Slicer"""
+        file_path = filedialog.askopenfilename(filetypes=[("OBJ Files", "*.obj")])
+        subprocess.run(["python", "Slicer_Script.py", "import", file_path])
+        self.root.destroy()
+
+
+
 
 
 if __name__ == "__main__":

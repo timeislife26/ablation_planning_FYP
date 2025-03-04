@@ -32,44 +32,9 @@ class SaveDialog(QWidget):
         self.close()  # Close this window after saving
 
 
-def create_tumor(x_radius, y_radius, z_radius, x_pos, y_pos, z_pos, index):
-    """Create an ellipsoid (tumor-like shape) at a specific position in Slicer."""
-    tumor_source = vtk.vtkParametricEllipsoid()
-    tumor_source.SetXRadius(x_radius)
-    tumor_source.SetYRadius(y_radius)
-    tumor_source.SetZRadius(z_radius)
-
-    parametric_function_source = vtk.vtkParametricFunctionSource()
-    parametric_function_source.SetParametricFunction(tumor_source)
-    parametric_function_source.Update()
-
-    model_name = f"Tumor_{index}"
-    model_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", model_name)
-    model_node.SetAndObservePolyData(parametric_function_source.GetOutput())
-
-    # Ensure a display node is created and enabled
-    display_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelDisplayNode")
-    model_node.SetAndObserveDisplayNodeID(display_node.GetID())
-
-    # Make sure visibility is ON
-    display_node.SetVisibility(True)
-    display_node.SetColor(0.8, 0.2, 0.2)  # Tumor color (dark red)
-    display_node.SetOpacity(0.9)  # Semi-transparent
-
-    # Move tumor to the correct position
-    transform_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLLinearTransformNode")
-    matrix = vtk.vtkMatrix4x4()
-    matrix.SetElement(0, 3, x_pos)
-    matrix.SetElement(1, 3, y_pos)
-    matrix.SetElement(2, 3, z_pos)
-    transform_node.SetMatrixTransformToParent(matrix)
-
-    model_node.SetAndObserveTransformNodeID(transform_node.GetID())
-
-    # Apply the transformation to lock the position
-    slicer.vtkSlicerTransformLogic().hardenTransform(model_node)
-
-    print(f"Tumor {index} created at ({x_pos}, {y_pos}, {z_pos}) with size ({x_radius}, {y_radius}, {z_radius})")
+def load_tumour(file_path):
+    print("Trying to load Model")
+    slicer.util.loadModel(file_path)
 
 
 def save_and_continue():
@@ -79,25 +44,26 @@ def save_and_continue():
     os.makedirs(obj_folder, exist_ok=True)
     save_path = os.path.join(obj_folder, "tumour.obj")
 
-    # Get all tumor nodes
-    tumor_nodes = [node for node in slicer.util.getNodesByClass("vtkMRMLModelNode") if "Tumor_" in node.GetName()]
+    all_models = slicer.util.getNodesByClass("vtkMRMLModelNode")
 
-    if not tumor_nodes:
-        print("No tumors found to save.")
-        return
-
+    # Print their names
+    for model in all_models:
+        print(model.GetName())
+    # Values in the models that I don't want to merge
+    ignore_fields = ["Red Volume Slice", "Green Volume Slice", "Yellow Volume Slice"]
     # Create an append filter to merge all tumors
     append_filter = vtk.vtkAppendPolyData()
 
-    for tumor_node in tumor_nodes:
-        # Apply transformation before merging
-        transform_node = tumor_node.GetParentTransformNode()
-        if transform_node:
-            slicer.vtkSlicerTransformLogic().hardenTransform(tumor_node)
+    for model in all_models:
+        if model.GetName() not in ignore_fields: # Must look if ther is a better way
+            # Apply transformation before merging
+            transform_node = model.GetParentTransformNode()
+            if transform_node:
+                slicer.vtkSlicerTransformLogic().hardenTransform(model)
 
-        poly_data = tumor_node.GetPolyData()
-        if poly_data:
-            append_filter.AddInputData(poly_data)
+            poly_data = model.GetPolyData()
+            if poly_data:
+                append_filter.AddInputData(poly_data)
 
     append_filter.Update()
 
@@ -123,7 +89,6 @@ def save_and_continue():
     print("Opening Unity...")
     open_unity_project(os.path.join(script_dir, "Unity", "FYP_Testing"))
 
-
 def open_unity_project(project_path):
     unity_executable = r"C:\Program Files\Unity\Hub\Editor\2022.3.15f1\Editor\Unity.exe"
     execute_method = "ImportObj.ImportObjFile"
@@ -136,18 +101,13 @@ def open_unity_project(project_path):
     except Exception as e:
         print(f"Failed to launch Unity project: {e}")
 
-# Read tumor data from Slicer script
+
+# Read file path of obj file from Slicer script
 if len(sys.argv) < 2:
     print("Usage: create_tumors.py <tumor_data>")
     sys.exit(1)
 
-tumor_data = sys.argv[1]
-tumor_parts = tumor_data.split("|")
-
-# Create each tumor
-for index, part in enumerate(tumor_parts):
-    x_dim, y_dim, z_dim, x_pos, y_pos, z_pos = map(float, part.split(","))
-    create_tumor(x_dim, y_dim, z_dim, x_pos, y_pos, z_pos, index)
-
-print("All tumors created. Modify as needed in Slicer.")
+file_path = sys.argv[1]
+load_tumour(file_path)
+print("Tumour loaded successfully")
 SaveDialog()
