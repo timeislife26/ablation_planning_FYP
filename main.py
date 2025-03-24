@@ -24,6 +24,9 @@ class TumorPlanner:
         self.close_button = tk.Button(self.root, text="Close", command=self.root.destroy)
         self.close_button.pack(pady=10)
 
+        self.load_dicom_button = tk.Button(self.root, text="Load DICOM Folder", command=self.on_load_dicom_click)
+        self.load_dicom_button.pack(pady=10)
+
         self.root.mainloop()
 
     def create_input_fields(self):
@@ -88,8 +91,12 @@ class TumorPlanner:
         subprocess.run(["python", "Slicer_Script.py", "import", file_path])
         self.root.destroy()
 
-
-
+    def on_load_dicom_click(self):
+        """Loads a DICOM folder into 3D Slicer"""
+        folder_path = filedialog.askdirectory(title="Select DICOM Folder")
+        if folder_path:
+            subprocess.run(["python", "Slicer_Script.py", "dicom", folder_path])
+            self.root.destroy()
 
 
 if __name__ == "__main__":
