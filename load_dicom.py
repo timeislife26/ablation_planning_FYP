@@ -2,7 +2,9 @@ import sys
 import os
 import slicer
 import vtk
+import subprocess
 from DICOMLib import DICOMUtils
+from qt import QWidget, QPushButton, QVBoxLayout, QLabel, Qt
 import vtkSegmentationCorePython as vtkSegmentationCore
 
 # 📂 Step 1: Load DICOM folder
@@ -50,7 +52,6 @@ segmentationNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode',
 segmentationNode.CreateDefaultDisplayNodes()
 segmentationNode.GetSegmentation().AddEmptySegment("AutoSegment")
 
-# Create editor node & widget
 segmentEditorNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentEditorNode')
 segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
 segmentEditorWidget.setMRMLScene(slicer.mrmlScene)
@@ -58,10 +59,9 @@ segmentEditorWidget.setMRMLSegmentEditorNode(segmentEditorNode)
 segmentEditorWidget.setSegmentationNode(segmentationNode)
 segmentEditorWidget.setSourceVolumeNode(bestVolumeNode)
 
-# Apply Threshold effect
 segmentEditorWidget.setActiveEffectByName("Threshold")
 effect = segmentEditorWidget.activeEffect()
-effect.setParameter("MinimumThreshold", "100")  # 🔧 Adjust based on scan
+effect.setParameter("MinimumThreshold", "100")  # Adjust as needed
 effect.setParameter("MaximumThreshold", "300")
 effect.self().onApply()
 segmentEditorWidget = None
@@ -71,24 +71,86 @@ print("✅ Threshold segmentation complete.")
 # 🧊 Step 3: Generate 3D surface
 segmentationNode.CreateClosedSurfaceRepresentation()
 
-# 🧱 Step 4: Export to 3D models
-shNode = slicer.vtkMRMLSubjectHierarchyNode.GetSubjectHierarchyNode(slicer.mrmlScene)
-segmentationItemID = shNode.GetItemByDataNode(segmentationNode)
-slicer.modules.segmentations.logic().ExportAllSegmentsToModels(segmentationNode, segmentationItemID)
-
-# 💾 Step 5: Save as STL or OBJ
-output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ExportedModels")
-os.makedirs(output_dir, exist_ok=True)
-
-modelNodes = slicer.util.getNodesByClass('vtkMRMLModelNode')
-for modelNode in modelNodes:
-    modelName = modelNode.GetName().replace(" ", "_")
-    output_path = os.path.join(output_dir, f"{modelName}.stl")
-    if slicer.util.saveNode(modelNode, output_path):
-        print(f"✅ Saved model: {output_path}")
-    else:
-        print(f"⚠️ Failed to save model: {modelName}")
-
-# 👀 Step 6: Visualize in viewer
+# 👀 Optional visualization
 slicer.util.setSliceViewerLayers(background=bestVolumeNode, label=segmentationNode)
-print("✅ Done.")
+
+# 🎛️ GUI: SaveDialog for user confirmation
+class SaveDialog(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Save and Continue")
+        self.setGeometry(100, 100, 300, 100)
+        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Window)
+
+        layout = QVBoxLayout()
+        label = QLabel("Segmentation is ready.\nClick below when ready to save and export to Unity.")
+        layout.addWidget(label)
+
+        self.save_button = QPushButton("Save and Continue")
+        self.save_button.clicked.connect(self.on_save)
+        layout.addWidget(self.save_button)
+
+        self.setLayout(layout)
+        self.show()
+
+    def on_save(self):
+        save_and_continue()
+        self.close()
+
+# 💾 Save + Export to Unity
+def save_and_continue():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    obj_folder = os.path.join(script_dir, "Obj_files")
+    os.makedirs(obj_folder, exist_ok=True)
+    save_path = os.path.join(obj_folder, "segmented_tumor.obj")
+
+    # ✅ Export segments to models and capture them immediately
+    segmentationLogic = slicer.modules.segmentations.logic()
+    segmentationLogic.ExportAllSegmentsToModels(segmentationNode, 0)
+
+    # Get all model nodes created after export
+    allModelNodes = slicer.util.getNodesByClass("vtkMRMLModelNode")
+    segmentationModelNodes = [node for node in allModelNodes if node.GetName().startswith("Segment_")]
+
+    if not segmentationModelNodes:
+        print("❌ No segmentation models found.")
+        return
+
+    # Merge them
+    append_filter = vtk.vtkAppendPolyData()
+    for node in segmentationModelNodes:
+        slicer.vtkSlicerTransformLogic().hardenTransform(node)
+        poly_data = node.GetPolyData()
+        if poly_data:
+            append_filter.AddInputData(poly_data)
+
+    append_filter.Update()
+
+    merged_model_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "Merged_Segmentation_Model")
+    merged_model_node.SetAndObservePolyData(append_filter.GetOutput())
+
+    display_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelDisplayNode")
+    merged_model_node.SetAndObserveDisplayNodeID(display_node.GetID())
+    display_node.SetVisibility(True)
+
+    success = slicer.util.saveNode(merged_model_node, save_path)
+    if success:
+        print(f"✅ Saved segmentation as {save_path}")
+        open_unity_project(os.path.join(script_dir, "Unity", "FYP_Testing"), save_path)
+    else:
+        print("❌ Failed to save segmentation.")
+
+
+# 🚀 Launch Unity
+def open_unity_project(project_path, save_path):
+    unity_executable = r"C:\Program Files\Unity\Hub\Editor\2022.3.15f1\Editor\Unity.exe"
+    execute_method = "ImportObj.ImportObjFile"
+    cmd = f'"{unity_executable}" -projectPath "{project_path}" -executeMethod {execute_method} --filePath "{save_path}"'
+    print(f"🚀 Launching Unity: {cmd}")
+    try:
+        subprocess.Popen(cmd, shell=True)
+    except Exception as e:
+        print(f"❌ Unity launch failed: {e}")
+
+# 🎛️ Show GUI to proceed when ready
+SaveDialog()
