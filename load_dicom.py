@@ -127,7 +127,23 @@ def save_and_continue():
     append_filter.Update()
 
     merged_model_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "Merged_Segmentation_Model")
-    merged_model_node.SetAndObservePolyData(append_filter.GetOutput())
+    # Center the model geometry at (0, 0, 0)
+    centered = vtk.vtkCenterOfMass()
+    centered.SetInputData(append_filter.GetOutput())
+    centered.SetUseScalarsAsWeights(False)
+    centered.Update()
+    com = centered.GetCenter()
+
+    transform = vtk.vtkTransform()
+    transform.Translate(-com[0], -com[1], -com[2])
+
+    transform_filter = vtk.vtkTransformPolyDataFilter()
+    transform_filter.SetTransform(transform)
+    transform_filter.SetInputData(append_filter.GetOutput())
+    transform_filter.Update()
+
+    # Set the centered polydata on the model node
+    merged_model_node.SetAndObservePolyData(transform_filter.GetOutput())
 
     display_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelDisplayNode")
     merged_model_node.SetAndObserveDisplayNodeID(display_node.GetID())
