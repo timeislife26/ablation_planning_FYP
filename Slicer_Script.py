@@ -3,7 +3,7 @@ import os
 import sys
 
 
-def Start_Slicer(tumor_data):
+def Start_Slicer(model_name,tumor_data):
     slicer_executable = r"C:\Program Files\slicer.org\Slicer 5.8.0\Slicer.exe"
     if os.path.exists(slicer_executable):
         try:
@@ -14,7 +14,7 @@ def Start_Slicer(tumor_data):
                 slicer_executable,
                 "--no-splash",
                 "--python-script", tumor_script_path,
-                tumor_data  # Pass as a single argument
+                model_name + "~" + tumor_data
             ])
         except Exception as e:
             print(f"Error while launching 3D Slicer: {e}")
@@ -62,8 +62,9 @@ def Start_Slicer_DICOM(folder_path):
 def main():
     method = sys.argv[1]
     if method == "create":
-        tumor_data = sys.argv[2]
-        Start_Slicer(tumor_data)
+        model_name = sys.argv[2]
+        tumor_data = sys.argv[3]
+        Start_Slicer(model_name, tumor_data)
     elif method == "dicom":
         folder_path = sys.argv[2]
         Start_Slicer_DICOM(folder_path)

@@ -5,7 +5,6 @@ import os
 import subprocess
 from qt import QWidget, QPushButton, QVBoxLayout, QLabel, Qt
 
-
 class SaveDialog(QWidget):
     """A non-blocking floating window with a 'Save and Continue' button."""
     def __init__(self):
@@ -77,7 +76,8 @@ def save_and_continue():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     obj_folder = os.path.join(script_dir, "Obj_files")
     os.makedirs(obj_folder, exist_ok=True)
-    save_path = os.path.join(obj_folder, "tumour.obj")
+    file_name = model_name + ".obj"
+    save_path = os.path.join(obj_folder, file_name)
 
     # Get all tumor nodes
     tumor_nodes = [node for node in slicer.util.getNodesByClass("vtkMRMLModelNode") if "Tumor_" in node.GetName()]
@@ -143,7 +143,10 @@ if len(sys.argv) < 2:
     print("Usage: create_tumors.py <tumor_data>")
     sys.exit(1)
 
-tumor_data = sys.argv[1]
+global model_name
+arguments = sys.argv[1]
+model_name = arguments.split("~")[0]
+tumor_data = arguments.split("~")[1]
 tumor_parts = tumor_data.split("|")
 
 # Create each tumor

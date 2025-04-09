@@ -9,6 +9,16 @@ class TumorPlanner:
         self.root.title("3D Tumour Planner")
         self.root.geometry("600x400")
 
+        self.name_frame = tk.Frame(self.root)
+        self.name_frame.pack(pady=5)
+        self.model_name_label = tk.Label(self.name_frame, text="Model Name").grid(row=0, column=0)
+
+        self.model_name_entry = tk.Entry(self.name_frame)
+        self.model_name_entry.grid(row=0, column=1)
+        self.name_frame.pack(pady=10)
+
+        self.model_name_entry.insert(0, "Patient")
+
         self.tumor_entries = []
         self.create_input_fields()
 
@@ -81,8 +91,9 @@ class TumorPlanner:
                 messagebox.showerror("Invalid Input", "Enter valid numbers for all fields.")
                 return
 
+        model_name = self.model_name_entry.get()
         # Pass tumors as a single string argument
-        subprocess.run(["python", "Slicer_Script.py", "create", "|".join(tumor_data)])
+        subprocess.run(["python", "Slicer_Script.py", "create", str(model_name),"|".join(tumor_data)])
         self.root.destroy()
 
     def on_load_tumour_click(self):
