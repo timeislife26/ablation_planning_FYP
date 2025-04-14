@@ -1,109 +1,125 @@
 import subprocess
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog
 
 
 class TumorPlanner:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("3D Tumour Planner")
-        self.root.geometry("600x400")
+        self.root.geometry("635x500")
 
-        self.name_frame = tk.Frame(self.root)
-        self.name_frame.pack(pady=5)
-        self.model_name_label = tk.Label(self.name_frame, text="Model Name").grid(row=0, column=0)
+        # Apply modern theme and color enhancements
+        style = ttk.Style(self.root)
+        style.theme_use('clam')
+        style.configure("TButton", padding=6, background="#d9e4f5", relief="flat")
+        style.configure("TLabel", padding=4, background="#e8f0fe")
+        style.configure("TLabelframe", background="#e8f0fe", relief="solid")
+        style.configure("TLabelframe.Label", background="#bcd4ec", foreground="#2b2b2b", font=('Segoe UI', 10, 'bold'))
 
-        self.model_name_entry = tk.Entry(self.name_frame)
-        self.model_name_entry.grid(row=0, column=1)
-        self.name_frame.pack(pady=10)
+        self.tab_control = ttk.Notebook(self.root)
 
-        self.model_name_entry.insert(0, "Patient")
+        self.dim_tab = tk.Frame(self.tab_control, bg="#f3f7fb")   # soft background for tabs
+        self.load_tab = tk.Frame(self.tab_control, bg="#f3f7fb")
+        self.dicom_tab = tk.Frame(self.tab_control, bg="#f3f7fb")
+
+        self.tab_control.add(self.dim_tab, text='Dimensions')
+        self.tab_control.add(self.load_tab, text='Load')
+        self.tab_control.add(self.dicom_tab, text='DICOM')
+        self.tab_control.pack(expand=1, fill="both")
 
         self.tumor_entries = []
-        self.create_input_fields()
 
-        self.add_button = tk.Button(self.root, text="Add More Dimensions", command=self.create_input_fields)
-        self.add_button.pack(pady=5)
-
-        self.create_button = tk.Button(self.root, text="Create Tumour", command=self.on_create_tumour_click)
-        self.create_button.pack(pady=10)
-
-        self.create_button = tk.Button(self.root, text="Load Tumour", command=self.on_load_tumour_click)
-        self.create_button.pack(pady=10)
-
-        self.close_button = tk.Button(self.root, text="Close", command=self.root.destroy)
-        self.close_button.pack(pady=10)
-
-        self.load_dicom_button = tk.Button(self.root, text="Load DICOM Folder", command=self.on_load_dicom_click)
-        self.load_dicom_button.pack(pady=10)
+        self.init_dimensions_tab()
+        self.init_load_tab()
+        self.init_dicom_tab()
 
         self.root.mainloop()
 
+    def init_dimensions_tab(self):
+        name_frame = ttk.LabelFrame(self.dim_tab, text="Model Name")
+        name_frame.pack(fill="x", padx=10, pady=10)
+
+        ttk.Label(name_frame, text="Model Name:").grid(row=0, column=0, padx=5, pady=5)
+        self.model_name_entry = ttk.Entry(name_frame)
+        self.model_name_entry.grid(row=0, column=1, padx=5, pady=5)
+        self.model_name_entry.insert(0, "Patient")
+
+        # Scrollable frame for dimensions
+        container = ttk.Frame(self.dim_tab)
+        container.pack(fill="both", expand=True, padx=10, pady=5)
+
+        canvas = tk.Canvas(container, background="#f8fbff", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
+        self.entries_frame = ttk.Frame(canvas)
+
+        self.entries_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"), width=e.width)
+        )
+
+        canvas.create_window((0, 0), window=self.entries_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Add initial input block
+        self.create_input_fields()
+
+        ttk.Button(self.dim_tab, text="Add More Dimensions", command=self.create_input_fields).pack(pady=5)
+        ttk.Button(self.dim_tab, text="Create Tumour", command=self.on_create_tumour_click).pack(pady=5)
+
+    def init_load_tab(self):
+        ttk.Label(self.load_tab, text="Load an existing tumour from OBJ file:", font=('Segoe UI', 11)).pack(pady=20)
+        ttk.Button(self.load_tab, text="Load Tumour", command=self.on_load_tumour_click).pack(pady=10)
+
+    def init_dicom_tab(self):
+        ttk.Label(self.dicom_tab, text="Load DICOM Folder into 3D Slicer:", font=('Segoe UI', 11)).pack(pady=20)
+        ttk.Button(self.dicom_tab, text="Load DICOM Folder", command=self.on_load_dicom_click).pack(pady=10)
+
     def create_input_fields(self):
-        """Create input fields for a new tumor specification."""
-        frame = tk.Frame(self.root)
-        frame.pack(pady=5)
+        group = ttk.LabelFrame(self.entries_frame, text=f"Tumour Section {len(self.tumor_entries) + 1}")
+        group.pack(fill="x", padx=5, pady=5, expand=True)
 
-        tk.Label(frame, text="X Dim:").grid(row=0, column=0)
-        entry_x = tk.Entry(frame)
-        entry_x.grid(row=0, column=1)
+        # Configure stretching columns (1, 3, 5 are the entry fields)
+        for col in (1, 3, 5):
+            group.columnconfigure(col, weight=1)
 
-        tk.Label(frame, text="Y Dim:").grid(row=0, column=2)
-        entry_y = tk.Entry(frame)
-        entry_y.grid(row=0, column=3)
+        labels = ["X Dim:", "Y Dim:", "Z Dim:", "X Pos:", "Y Pos:", "Z Pos:"]
+        entries = []
 
-        tk.Label(frame, text="Z Dim:").grid(row=0, column=4)
-        entry_z = tk.Entry(frame)
-        entry_z.grid(row=0, column=5)
+        for i, label in enumerate(labels):
+            ttk.Label(group, text=label).grid(row=i // 3, column=(i % 3) * 2, padx=5, pady=5, sticky='e')
+            entry = ttk.Entry(group)
+            entry.grid(row=i // 3, column=(i % 3) * 2 + 1, padx=5, pady=5, sticky='we')
+            entries.append(entry)
 
-        tk.Label(frame, text="X Pos:").grid(row=1, column=0)
-        entry_px = tk.Entry(frame)
-        entry_px.grid(row=1, column=1)
-
-        tk.Label(frame, text="Y Pos:").grid(row=1, column=2)
-        entry_py = tk.Entry(frame)
-        entry_py.grid(row=1, column=3)
-
-        tk.Label(frame, text="Z Pos:").grid(row=1, column=4)
-        entry_pz = tk.Entry(frame)
-        entry_pz.grid(row=1, column=5)
-
-        self.tumor_entries.append((entry_x, entry_y, entry_z, entry_px, entry_py, entry_pz))
+        self.tumor_entries.append(entries)
 
     def on_create_tumour_click(self):
-        """Get user inputs, validate them, and start Slicer."""
         tumor_data = []
         for entries in self.tumor_entries:
             try:
-                x_dim = float(entries[0].get())
-                y_dim = float(entries[1].get())
-                z_dim = float(entries[2].get())
-                x_pos = float(entries[3].get())
-                y_pos = float(entries[4].get())
-                z_pos = float(entries[5].get())
-
-                if min(x_dim, y_dim, z_dim) <= 0:
+                values = [float(e.get()) for e in entries]
+                if min(values[:3]) <= 0:
                     raise ValueError("Dimensions must be positive")
-
-                tumor_data.append(f"{x_dim},{y_dim},{z_dim},{x_pos},{y_pos},{z_pos}")
-
+                tumor_data.append(",".join(map(str, values)))
             except ValueError:
                 messagebox.showerror("Invalid Input", "Enter valid numbers for all fields.")
                 return
 
         model_name = self.model_name_entry.get()
-        # Pass tumors as a single string argument
-        subprocess.run(["python", "Slicer_Script.py", "create", str(model_name),"|".join(tumor_data)])
+        subprocess.run(["python", "Slicer_Script.py", "create", model_name, "|".join(tumor_data)])
         self.root.destroy()
 
     def on_load_tumour_click(self):
-        """Loads the tumour from an obj file into 3D Slicer"""
         file_path = filedialog.askopenfilename(filetypes=[("OBJ Files", "*.obj")])
-        subprocess.run(["python", "Slicer_Script.py", "import", file_path])
-        self.root.destroy()
+        if file_path:
+            subprocess.run(["python", "Slicer_Script.py", "import", file_path])
+            self.root.destroy()
 
     def on_load_dicom_click(self):
-        """Loads a DICOM folder into 3D Slicer"""
         folder_path = filedialog.askdirectory(title="Select DICOM Folder")
         if folder_path:
             subprocess.run(["python", "Slicer_Script.py", "dicom", folder_path])
