@@ -19,13 +19,15 @@ class TumorPlanner:
 
         self.tab_control = ttk.Notebook(self.root)
 
-        self.dim_tab = tk.Frame(self.tab_control, bg="#f3f7fb")   # soft background for tabs
+        self.dim_tab = tk.Frame(self.tab_control, bg="#f3f7fb")
         self.load_tab = tk.Frame(self.tab_control, bg="#f3f7fb")
         self.dicom_tab = tk.Frame(self.tab_control, bg="#f3f7fb")
+        self.nifti_tab = tk.Frame(self.tab_control, bg="#f3f7fb")
 
         self.tab_control.add(self.dim_tab, text='Dimensions')
         self.tab_control.add(self.load_tab, text='Load')
         self.tab_control.add(self.dicom_tab, text='DICOM')
+        self.tab_control.add(self.nifti_tab, text='NIfTI')
         self.tab_control.pack(expand=1, fill="both")
 
         self.tumor_entries = []
@@ -33,6 +35,7 @@ class TumorPlanner:
         self.init_dimensions_tab()
         self.init_load_tab()
         self.init_dicom_tab()
+        self.init_nifti_tab()
 
         self.root.mainloop()
 
@@ -45,7 +48,6 @@ class TumorPlanner:
         self.model_name_entry.grid(row=0, column=1, padx=5, pady=5)
         self.model_name_entry.insert(0, "Patient")
 
-        # Scrollable frame for dimensions
         container = ttk.Frame(self.dim_tab)
         container.pack(fill="both", expand=True, padx=10, pady=5)
 
@@ -64,7 +66,6 @@ class TumorPlanner:
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Add initial input block
         self.create_input_fields()
 
         ttk.Button(self.dim_tab, text="Add More Dimensions", command=self.create_input_fields).pack(pady=5)
@@ -78,11 +79,14 @@ class TumorPlanner:
         ttk.Label(self.dicom_tab, text="Load DICOM Folder into 3D Slicer:", font=('Segoe UI', 11)).pack(pady=20)
         ttk.Button(self.dicom_tab, text="Load DICOM Folder", command=self.on_load_dicom_click).pack(pady=10)
 
+    def init_nifti_tab(self):
+        ttk.Label(self.nifti_tab, text="Load NIfTI File into 3D Slicer:", font=('Segoe UI', 11)).pack(pady=20)
+        ttk.Button(self.nifti_tab, text="Load NIfTI File", command=self.on_load_nifti_click).pack(pady=10)
+
     def create_input_fields(self):
         group = ttk.LabelFrame(self.entries_frame, text=f"Tumour Section {len(self.tumor_entries) + 1}")
         group.pack(fill="x", padx=5, pady=5, expand=True)
 
-        # Configure stretching columns (1, 3, 5 are the entry fields)
         for col in (1, 3, 5):
             group.columnconfigure(col, weight=1)
 
@@ -125,6 +129,11 @@ class TumorPlanner:
             subprocess.run(["python", "Slicer_Script.py", "dicom", folder_path])
             self.root.destroy()
 
+    def on_load_nifti_click(self):
+        file_path = filedialog.askopenfilename(filetypes=[("NIfTI Files", "*.nii *.nii.gz")])
+        if file_path:
+            subprocess.run(["python", "Slicer_Script.py", "nifti", file_path])
+            self.root.destroy()
 
 if __name__ == "__main__":
     TumorPlanner()

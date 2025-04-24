@@ -57,6 +57,14 @@ def Start_Slicer_DICOM(folder_path):
     else:
         print(f"Slicer executable not found at {slicer_executable}")
 
+def Start_Slicer_Nifti(nifti_path):
+    slicer_executable = r"C:\Program Files\slicer.org\Slicer 5.8.0\Slicer.exe"
+    subprocess.Popen([
+        slicer_executable,
+        "--no-splash",
+        "--python-script", "load_nifti.py",
+        nifti_path
+    ])
 
 
 def main():
@@ -68,6 +76,10 @@ def main():
     elif method == "dicom":
         folder_path = sys.argv[2]
         Start_Slicer_DICOM(folder_path)
+    elif method == "nifti":
+        nifti_path = sys.argv[2]
+        Start_Slicer_Nifti(nifti_path)
+
     else:
         file_path = sys.argv[2]
         Start_Slicer_Import(file_path)
