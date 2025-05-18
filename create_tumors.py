@@ -102,7 +102,7 @@ def save_and_continue():
     append_filter.Update()
 
     # Create a new merged model
-    merged_model_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "Merged_Tumor_Model")
+    merged_model_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "segmented_tumor")
     merged_model_node.SetAndObservePolyData(append_filter.GetOutput())
 
     # Assign a display node to ensure visibility

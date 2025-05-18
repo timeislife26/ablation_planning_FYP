@@ -130,10 +130,19 @@ class TumorPlanner:
             self.root.destroy()
 
     def on_load_nifti_click(self):
-        file_path = filedialog.askopenfilename(filetypes=[("NIfTI Files", "*.nii *.nii.gz")])
-        if file_path:
-            subprocess.run(["python", "Slicer_Script.py", "nifti", file_path])
-            self.root.destroy()
+        choice = messagebox.askyesno("Load NIfTI",
+                                     "Do you want to load a folder with volume and segmentation?\n\nYes: Load folder\nNo: Load single NIfTI file")
+        if choice:
+            folder_path = filedialog.askdirectory(title="Select Folder Containing volume-*.nii and segmentation-*.nii")
+            if folder_path:
+                subprocess.run(["python", "Slicer_Script.py", "nifti_folder", folder_path])
+                self.root.destroy()
+        else:
+            file_path = filedialog.askopenfilename(filetypes=[("NIfTI Files", "*.nii *.nii.gz")])
+            if file_path:
+                subprocess.run(["python", "Slicer_Script.py", "nifti", file_path])
+                self.root.destroy()
+
 
 if __name__ == "__main__":
     TumorPlanner()

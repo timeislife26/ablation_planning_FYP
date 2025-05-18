@@ -1,98 +1,60 @@
-import sys
-import os
 import slicer
-import vtk
-import subprocess
-from qt import QWidget, QPushButton, QVBoxLayout, QLabel, Qt
+import os
+import sys
+import argparse
 
-# === Input NIfTI File ===
-if len(sys.argv) < 2:
-    print("Usage: load_nifti.py <nifti_file>")
-    sys.exit(1)
+def load_nifti_volume(path):
+    loaded_node = slicer.util.loadVolume(path)
+    if loaded_node is None:
+        raise RuntimeError(f"Failed to load volume: {path}")
+    print(f"✅ Loaded volume: {path}")
+    return loaded_node
 
-nifti_path = sys.argv[1]
-print(f"📂 Loading NIfTI file: {nifti_path}")
+def load_nifti_segmentation(path):
+    loaded_node = slicer.util.loadLabelVolume(path)
+    if loaded_node is None:
+        raise RuntimeError(f"Failed to load segmentation: {path}")
+    print(f"✅ Loaded segmentation: {path}")
+    return loaded_node
 
-# === Load NIfTI Volume ===
-success, volumeNode = slicer.util.loadVolume(nifti_path, returnNode=True)
-if not success:
-    print("❌ Failed to load NIfTI file.")
-    sys.exit(1)
+def segment_to_model(segmentation_node):
+    success, model_node = slicer.util.labelMapVolumeToModel(segmentation_node)
+    if success:
+        print("✅ Converted segmentation to model")
+    else:
+        raise RuntimeError("❌ Failed to convert segmentation to model")
+    return model_node
 
-print(f"✅ Loaded volume node: {volumeNode.GetName()}")
-slicer.util.setSliceViewerLayers(background=volumeNode)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", help="Single NIfTI file path")
+    parser.add_argument("--folder", help="Folder with volume and segmentation")
+    args = parser.parse_args()
 
-# === GUI Dialog ===
-class SaveDialog(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("NIfTI Loaded")
-        self.setGeometry(100, 100, 300, 100)
-        self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.Window)
+    if args.file:
+        load_nifti_volume(args.file)
 
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel("NIfTI loaded into Slicer.\nClick below to export to Unity."))
+    elif args.folder:
+        files = os.listdir(args.folder)
+        volume_file = next((f for f in files if f.startswith("volume-") and f.endswith(".nii")), None)
+        seg_file = next((f for f in files if f.startswith("segmentation-") and f.endswith(".nii")), None)
 
-        self.save_button = QPushButton("Save and Continue")
-        self.save_button.clicked.connect(self.on_save)
-        layout.addWidget(self.save_button)
+        if not volume_file:
+            raise FileNotFoundError("❌ No volume-*.nii file found in folder")
 
-        self.setLayout(layout)
-        self.show()
+        volume_path = os.path.join(args.folder, volume_file)
+        seg_path = os.path.join(args.folder, seg_file) if seg_file else None
 
-    def on_save(self):
-        save_and_continue()
-        self.close()
+        vol_node = load_nifti_volume(volume_path)
 
-# === Export to OBJ (Surface Model) ===
-def save_and_continue():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    obj_folder = os.path.join(script_dir, "Obj_files")
-    os.makedirs(obj_folder, exist_ok=True)
-    save_path = os.path.join(obj_folder, "nifti_volume.obj")
+        if seg_path:
+            seg_node = load_nifti_segmentation(seg_path)
+            segment_to_model(seg_node)
+        else:
+            print("⚠️ No segmentation-*.nii found; only volume loaded.")
 
-    segmentationNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLSegmentationNode", "NiftiSegmentation")
-    segmentationNode.CreateDefaultDisplayNodes()
+    else:
+        raise ValueError("❌ Must specify either --file or --folder")
 
-    slicer.modules.segmentations.logic().ImportLabelmapToSegmentationNode(volumeNode, segmentationNode)
-    segmentationNode.CreateClosedSurfaceRepresentation()
-
-    slicer.modules.segmentations.logic().ExportAllSegmentsToModels(segmentationNode, 0)
-
-    allModelNodes = slicer.util.getNodesByClass("vtkMRMLModelNode")
-    exportable = [n for n in allModelNodes if "Segment" in n.GetName()]
-
-    append_filter = vtk.vtkAppendPolyData()
-    for node in exportable:
-        slicer.vtkSlicerTransformLogic().hardenTransform(node)
-        poly_data = node.GetPolyData()
-        if poly_data:
-            append_filter.AddInputData(poly_data)
-    append_filter.Update()
-
-    merged_model = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelNode", "Merged_Model")
-    merged_model.SetAndObservePolyData(append_filter.GetOutput())
-
-    display_node = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLModelDisplayNode")
-    merged_model.SetAndObserveDisplayNodeID(display_node.GetID())
-    display_node.SetVisibility(True)
-    display_node.SetColor(0.8, 0.3, 0.3)
-    display_node.SetOpacity(0.8)
-
-    slicer.util.saveNode(merged_model, save_path)
-    print(f"✅ Saved 3D model as {save_path}")
-    open_unity_project(save_path)
-
-# === Unity Integration ===
-def open_unity_project(save_path):
-    unity_executable = r"C:\Program Files\Unity\Hub\Editor\2022.3.15f1\Editor\Unity.exe"
-    project_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Unity", "FYP_Testing")
-    execute_method = "ImportObj.ImportObjFile"
-    cmd = f'"{unity_executable}" -projectPath "{project_path}" -executeMethod {execute_method} --filePath "{save_path}"'
-    print(f"🚀 Launching Unity: {cmd}")
-    try:
-        subprocess.Popen(cmd, shell=True)
-    except Exception as e:
-        print(f"❌ Unity launch failed: {e}")
-
-SaveDialog()
+if __name__ == "__main__":
+    main()
