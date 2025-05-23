@@ -7,14 +7,14 @@ def load_nifti_volume(path):
     loaded_node = slicer.util.loadVolume(path)
     if loaded_node is None:
         raise RuntimeError(f"Failed to load volume: {path}")
-    print(f"✅ Loaded volume: {path}")
+    print(f"Loaded volume: {path}")
     return loaded_node
 
 def load_nifti_segmentation(path):
     loaded_node = slicer.util.loadLabelVolume(path)
     if loaded_node is None:
         raise RuntimeError(f"Failed to load segmentation: {path}")
-    print(f"✅ Loaded segmentation: {path}")
+    print(f"Loaded segmentation: {path}")
     return loaded_node
 
 def segment_to_model(segmentation_node):
@@ -22,7 +22,7 @@ def segment_to_model(segmentation_node):
     if success:
         print("✅ Converted segmentation to model")
     else:
-        raise RuntimeError("❌ Failed to convert segmentation to model")
+        raise RuntimeError("Failed to convert segmentation to model")
     return model_node
 
 def main():
@@ -40,7 +40,7 @@ def main():
         seg_file = next((f for f in files if f.startswith("segmentation-") and f.endswith(".nii")), None)
 
         if not volume_file:
-            raise FileNotFoundError("❌ No volume-*.nii file found in folder")
+            raise FileNotFoundError("No volume-*.nii file found in folder")
 
         volume_path = os.path.join(args.folder, volume_file)
         seg_path = os.path.join(args.folder, seg_file) if seg_file else None
@@ -51,10 +51,10 @@ def main():
             seg_node = load_nifti_segmentation(seg_path)
             segment_to_model(seg_node)
         else:
-            print("⚠️ No segmentation-*.nii found; only volume loaded.")
+            print("No segmentation-*.nii found; only volume loaded.")
 
     else:
-        raise ValueError("❌ Must specify either --file or --folder")
+        raise ValueError("Must specify either --file or --folder")
 
 if __name__ == "__main__":
     main()

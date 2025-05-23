@@ -60,7 +60,7 @@ def Start_Slicer_DICOM(folder_path):
 def Start_Slicer_Nifti(nifti_path):
     import os
 
-    slicer_executable = r"C:\Program Files\slicer.org\Slicer 5.8.0\Slicer.exe"
+    slicer_executable = r"C:\Program Files\slicer.org\Slicer 5.8.0\Slicer.exe" # Path to Slicer exe file. Change if saved in a different location
 
     if os.path.isdir(nifti_path):
         subprocess.Popen([
